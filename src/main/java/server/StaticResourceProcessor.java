@@ -22,7 +22,7 @@ public class StaticResourceProcessor {
             + "Content-Type: ${ContentType}\r\n"
             + "Content-Length: ${ContentLength}\r\n"
             + "Server: TimiTomcat\r\n"
-            + "Date: ${ZonedDateTIme}\r\n"
+            + "Date: ${ZonedDateTime}\r\n"
             + "\r\n";
 
     public void process(Request request, Response response) throws IOException {
@@ -34,7 +34,7 @@ public class StaticResourceProcessor {
             File file = new File(HttpServer.WEB_ROOT, request.getUri());
             if (file.exists()) {
                 String head = composeResponseHead(file);
-                output.write(head.getBytes("utf-8"));
+                output.write(head.getBytes("UTF-8"));
                 fis = new FileInputStream(file);
                 int ch = fis.read(bytes, 0, BUFFER_SIZE);
                 while (ch != -1) {
@@ -59,8 +59,8 @@ public class StaticResourceProcessor {
         Map<String, Object> valuesMap = new HashMap<String, Object>();
         valuesMap.put("StatusCode", "200");
         valuesMap.put("StatusName", "OK");
-        valuesMap.put("Content-Type", "text/html;charset=UTF-8");
-        valuesMap.put("Content-Length", fileLength);
+        valuesMap.put("ContentType", "text/html;charset=UTF-8");
+        valuesMap.put("ContentLength", fileLength);
         valuesMap.put("ZonedDateTime", DateTimeFormatter.ISO_ZONED_DATE_TIME.format(ZonedDateTime.now()));
         StrSubstitutor sub = new StrSubstitutor(valuesMap);
         return sub.replace(OKMessage);
