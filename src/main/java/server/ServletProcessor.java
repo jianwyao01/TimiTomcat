@@ -2,10 +2,7 @@ package server;
 
 import org.apache.commons.lang3.text.StrSubstitutor;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.net.URLStreamHandler;
@@ -26,7 +23,7 @@ public class ServletProcessor {
         String uri = request.getUri();
         String servletName = uri.substring(uri.lastIndexOf('/') + 1);
         URLClassLoader loader = null;
-        OutputStream output = null;
+        PrintWriter writer = null;
 
         try {
             URL[] urls = new URL[1];
@@ -39,6 +36,13 @@ public class ServletProcessor {
             System.out.println(e.getMessage());
         }
 
+        try {
+            response.setCharacterEncoding("UTF-8");
+            writer = response.getWriter();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         Class<?> servletClass = null;
         try {
             servletClass = loader.loadClass(servletName);
@@ -46,16 +50,8 @@ public class ServletProcessor {
             System.out.println(e.getMessage());
         }
 
-        output = response.getOutput();
         String head = composeResponseHead();
-        try {
-            output.write(head.getBytes("utf-8"));
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
+        writer.println(head);
         Servlet servlet = null;
         try {
             servlet = (Servlet) servletClass.newInstance();
@@ -65,20 +61,14 @@ public class ServletProcessor {
         } catch (Throwable e) {
             System.out.println(e.getMessage());
         }
-
-        try {
-            output.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     private String composeResponseHead() {
         Map<String, Object> valuesMap = new HashMap<>();
         valuesMap.put("StatusCode", "200");
         valuesMap.put("StatusName", "OK");
-        valuesMap.put("Content-Type", "text/html;charset=utf-8");
-        valuesMap.put("ZonedDateTime", DateTimeFormatter.ISO_ZONED_DATE_TIME.format(ZonedDateTime.now()));
+        valuesMap.put("ContentType", "text/html;charset=UTF-8");
+        valuesMap.put("ZonedDateTIme", DateTimeFormatter.ISO_ZONED_DATE_TIME.format(ZonedDateTime.now()));
         StrSubstitutor sub = new StrSubstitutor(valuesMap);
         return sub.replace(OKMessage);
     }
