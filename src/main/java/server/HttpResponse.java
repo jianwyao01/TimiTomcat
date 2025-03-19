@@ -3,14 +3,12 @@ package server;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class HttpResponse implements HttpServletResponse {
@@ -20,11 +18,14 @@ public class HttpResponse implements HttpServletResponse {
     PrintWriter writer;
     String contentType = null;
     long contentLength = -1;
-    String characterEncoding = null;
+    String characterEncoding = "UTF-8";
     String protocol = "HTTP/1.1";
     Map<String, String> headers = new ConcurrentHashMap<>();
     String message = getStatusMessage(HttpServletResponse.SC_OK);
     int status = HttpServletResponse.SC_OK;
+
+    ArrayList<Cookie> cookies = new ArrayList<>();
+    public HttpResponse() {}
 
     public HttpResponse(OutputStream output) {
         this.output = output;
@@ -32,6 +33,18 @@ public class HttpResponse implements HttpServletResponse {
 
     public void setRequest(HttpRequest request) {
         this.request = request;
+    }
+
+    public void setStream(OutputStream output) {
+        this.output = output;
+    }
+
+    public void finishResponse() {
+        try {
+            this.getWriter().flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     protected String getStatusMessage(int status) {
@@ -73,7 +86,9 @@ public class HttpResponse implements HttpServletResponse {
 
     @Override
     public void addCookie(Cookie cookie) {
-
+        synchronized (cookies) {
+            cookies.add(cookie);
+        }
     }
 
     @Override
@@ -177,6 +192,27 @@ public class HttpResponse implements HttpServletResponse {
             outputWriter.print("\r\n");
         }
 
+        HttpSession session = this.request.getSession(false);
+        if (session != null) {
+            Cookie cookie = new Cookie(DefaultHeaders.JSESSIONID_NAME, session.getId());
+            cookie.setMaxAge(-1);
+            addCookie(cookie);
+        }
+
+        synchronized (cookies) {
+            Iterator<Cookie> items = cookies.iterator();
+            while (items.hasNext()) {
+                Cookie cookie = items.next();
+                outputWriter.print(CookieTools.getCookieHeaderName(cookie));
+                outputWriter.print(": ");
+                StringBuffer sb = new StringBuffer();
+                CookieTools.getCookieHeaderValue(cookie, sb);
+                System.out.println("Set cookie jsessonid string: " + sb.toString());
+                outputWriter.print(sb.toString());
+                outputWriter.print("\r\n");
+            }
+        }
+
         outputWriter.print("\r\n");
         outputWriter.flush();
     }
@@ -217,7 +253,7 @@ public class HttpResponse implements HttpServletResponse {
 
     @Override
     public String getHeader(String s) {
-        return "";
+        return headers.get(s);
     }
 
     @Override
@@ -247,7 +283,10 @@ public class HttpResponse implements HttpServletResponse {
 
     @Override
     public PrintWriter getWriter() throws IOException {
-        return new PrintWriter(new OutputStreamWriter(output, getCharacterEncoding()), true);
+        if (writer == null) {
+            writer = new PrintWriter(new OutputStreamWriter(output, getCharacterEncoding()), true);
+        }
+        return writer;
     }
 
     @Override

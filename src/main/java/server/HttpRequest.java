@@ -17,6 +17,7 @@ public class HttpRequest implements HttpServletRequest {
     private String queryString;
     InetAddress address;
     int port;
+    private HttpResponse response;
 
     private boolean parsed = false;
 
@@ -32,6 +33,10 @@ public class HttpRequest implements HttpServletRequest {
     public HttpRequest(InputStream input) {
         this.input = input;
         this.sis = new SocketInputStream(this.input, 2048);
+    }
+
+    public void setResponse(HttpResponse response) {
+        this.response = response;
     }
 
     public void parse(Socket socket) {
@@ -52,18 +57,20 @@ public class HttpRequest implements HttpServletRequest {
         int question = requestLine.indexOf("?");
         if (question != -1) {
             queryString = new String(requestLine.uri, question + 1, requestLine.uriEnd - question - 1);
-            uri = new String(requestLine.uri, 0, requestLine.uriEnd);
-            int semicolon = uri.indexOf(DefaultHeaders.JSESSIONID_NAME);
+            uri = new String(requestLine.uri, 0, question);
+            String tmp = ";" + DefaultHeaders.JSESSIONID_NAME + "=";
+            int semicolon = uri.indexOf(tmp);
             if (semicolon != -1) {
-                sessionId = uri.substring(semicolon + DefaultHeaders.JSESSIONID_NAME.length());
+                sessionId = uri.substring(semicolon+ tmp.length());
                 uri = uri.substring(0, semicolon);
             }
         } else {
             queryString = null;
             uri = new String(requestLine.uri, 0, requestLine.uriEnd);
-            int simicolon = uri.indexOf(DefaultHeaders.JSESSIONID_NAME);
+            String tmp = ";" + DefaultHeaders.JSESSIONID_NAME + "=";
+            int simicolon = uri.indexOf(tmp);
             if (simicolon != -1) {
-                sessionId = uri.substring(simicolon + DefaultHeaders.JSESSIONID_NAME.length());
+                sessionId = uri.substring(simicolon + tmp.length());
                 uri = uri.substring(0, simicolon);
             }
         }
@@ -82,6 +89,7 @@ public class HttpRequest implements HttpServletRequest {
             }
             String name = new String(header.name, 0, header.nameEnd);
             String value = new String(header.value, 0, header.valueEnd);
+            name = name.toLowerCase();
 
             if (name.equals(DefaultHeaders.ACCEPT_LANGUAGE_NAME)) {
                 headers.put(name, value);
@@ -90,8 +98,6 @@ public class HttpRequest implements HttpServletRequest {
             } else if (name.equals(DefaultHeaders.CONTENT_TYPE_NAME)) {
                 headers.put(name, value);
             } else if (name.equals(DefaultHeaders.HOST_NAME)) {
-                headers.put(name, value);
-            } else if (name.equals(DefaultHeaders.CONNECTION_NAME)) {
                 headers.put(name, value);
             } else if (name.equals(DefaultHeaders.TRANSFER_ENCODING_NAME)) {
                 headers.put(name, value);
@@ -104,7 +110,13 @@ public class HttpRequest implements HttpServletRequest {
                         this.sessionId = cookies[i].getValue();
                     }
                 }
-            } else {
+            } else if (name.equals(DefaultHeaders.CONNECTION_NAME)) {
+                headers.put(name, value);
+                if (value.equals("close")) {
+                    response.setHeader("Connection", "close");
+                }
+            }
+            else {
                 headers.put(name, value);
             }
         }

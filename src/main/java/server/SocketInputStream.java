@@ -15,7 +15,7 @@ public class SocketInputStream extends ServletInputStream {
     private static final byte COLON = (byte) ':';
     private static final int LC_OFFSET = 'A' - 'a';
 
-    protected byte buf[];
+    protected byte[] buf;
     protected int count;
     protected int pos;
     protected InputStream is;
@@ -34,6 +34,7 @@ public class SocketInputStream extends ServletInputStream {
         } while (chr == CR || chr == LF);
 
         pos --; // first position
+
         int maxRead = requestLine.method.length;
         int readStart = pos;
         int readCount = 0;
